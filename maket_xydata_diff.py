@@ -128,6 +128,18 @@ def convert_df(df):
 
 if __name__ == '__main__':
     df = read_xydata('000048.SZ', pd.to_datetime('20190522'))
-    df = convert_df(df)
+    xydate_maket_df = convert_df(df)
+    xydate_maket_df = xydate_maket_df[['TIME', 'S_INFO_WINDCODE', 'MATCH', 'TURNOVER']]
+    xydate_maket_df['TURNOVER_diff'] = xydate_maket_df['TURNOVER'].diff().fillna(xydate_maket_df['TURNOVER'])
+    xydate_maket_df = xydate_maket_df[(xydate_maket_df['MATCH'] > 0) & (xydate_maket_df['TURNOVER_diff'] > 0)]
+    ohlc_dict = {'MATCH': ['first', 'max', 'min', 'last']}
 
+    xydate_maket_df_k1m = xydate_maket_df.resample('1min', on='TIME', closed='left', label='left').agg(ohlc_dict)
+
+    wind_api_df = pd.read_csv('./datas/000048.SZ_20190522.csv', encoding='gbk')
+    wind_api_df = wind_api_df[['DateTime', 'windcode', 'open', 'high', 'low', 'close']]
+    wind_api_df_k1m = wind_api_df.set_index(keys='DateTime')
+    # wind_api_df.columns = ['TRADE_DT', 'S_INFO_WINDCODE', ]
+    df = pd.merge(xydate_maket_df_k1m, wind_api_df_k1m, left_index=True, right_index=True)
+    df.to_csv('./datas/result.csv', index=True)
     print(df)
